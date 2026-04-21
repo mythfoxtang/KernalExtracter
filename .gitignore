@@ -1,0 +1,14 @@
+# Secrets
+page-answer-agent/.env.local
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Runtime outputs
+page-answer-agent/agent_logs/
+page-answer-agent/captured_pages/
+
+# IDE
+.idea/
+
