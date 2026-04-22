@@ -7,8 +7,8 @@ __pycache__/
 
 # Runtime outputs
 page-answer-agent/agent_logs/
+page-answer-agent/agent_runs/
 page-answer-agent/captured_pages/
 
 # IDE
 .idea/
-

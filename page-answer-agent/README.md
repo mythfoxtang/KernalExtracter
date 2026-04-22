@@ -1,67 +1,77 @@
 # Page Answer Agent
 
-独立的页面读取 + Agent 作答模块。
+当前版本已经改成双视图结构：
 
-职责只有一条链路：
+1. 抓取页面后立即创建一个 `session_id`
+2. 后台同时启动两个独立 run
+3. `direct` 只生成最简中文答案
+4. `detail` 生成中文详细过程与答案，并保持流式输出
+5. 手机端可以在两个页面之间切换
 
-1. 读取当前浏览器页面文本
-2. 识别页面里真正需要完成的题目或任务
-3. 选择主任务
-4. 输出答案
-5. 记录抓取和答案日志
+## 页面
 
-## 目录
+- `GET /mobile/latest`
+  打开最近一次任务的最简答案页
+- `GET /mobile/session/<session_id>/direct`
+  最简答案页
+- `GET /mobile/session/<session_id>/detail`
+  过程与答案页
 
-- `agent.py`
-  任务识别、主任务选择、作答的核心 Agent
-- `page_capture_server.py`
-  接收抓取内容，触发 Agent，并写日志
-- `page_capture_hotkey.py`
-  连接 Chrome 调试窗口，按热键抓当前页
-- `start-chrome-debug.ps1`
-  启动独立 Chrome 调试窗口
-- `start-page-answer-agent.bat`
-  一键启动服务、浏览器、热键
-- `一键启动页面答题浏览器.bat`
-  更直白的中文启动入口
-- `run_agent.py`
-  对已有抓取文件手动重跑 Agent
+## API
 
-## 使用
+- `POST /api/page-capture`
 
-双击：
+返回示例：
 
-- `一键启动页面答题浏览器.bat`
+```json
+{
+  "ok": true,
+  "sessionId": "20260422-101530-ab12",
+  "directRunId": "20260422-101531-cd34",
+  "detailRunId": "20260422-101531-ef56",
+  "status": "queued",
+  "mobileUrl": "/mobile/session/20260422-101530-ab12/direct",
+  "directMobileUrl": "/mobile/session/20260422-101530-ab12/direct",
+  "detailMobileUrl": "/mobile/session/20260422-101530-ab12/detail",
+  "apiUrl": "/api/sessions/20260422-101530-ab12"
+}
+```
 
-或者命令行运行：
+- `GET /api/sessions/<session_id>`
+  返回 session 信息以及 `direct` / `detail` 两个 run 的最新状态
+- `GET /api/runs/<run_id>`
+  返回单个 run 的状态
+
+## 输出策略
+
+- `direct`
+  中文，极短，优先只给最终答案
+- `detail`
+  中文，先给答案，再给简洁步骤，手机端流式查看
+
+## 运行输出
+
+- `captured_pages/latest-page-capture.json`
+- `agent_runs/<run_id>.json`
+- `agent_runs/sessions/<session_id>.json`
+- `agent_runs/sessions/latest.json`
+- `agent_logs/latest-direct.json`
+- `agent_logs/latest-detail.json`
+
+## 启动
 
 ```bat
+cd page-answer-agent
 start-page-answer-agent.bat https://example.com/problem
 ```
 
 启动后：
 
-1. 在独立 Chrome 调试窗口里打开题目页
+1. 在独立 Chrome 调试窗口打开题目页
 2. 按 `Ctrl+Shift+Y`
-3. 自动抓取
-4. 自动作答
-5. 自动记日志
+3. 控制台会打印 `direct` 和 `detail` 两个手机页面地址
 
-## 输出
-
-抓取内容：
-
-- `captured_pages/latest-page-capture.json`
-- `captured_pages/page-capture-时间戳.json`
-
-答案日志：
-
-- `agent_logs/latest-agent-run.json`
-- `agent_logs/agent-run-时间戳.json`
-
-## 配置
-
-在当前目录放 `.env.local`：
+## 环境变量
 
 ```env
 DASHSCOPE_API_KEY=...
@@ -69,13 +79,20 @@ QWEN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 QWEN_VISION_MODEL=qwen2.5-vl-3b-instruct
 QWEN_TEXT_MODEL=qwen-plus
 PAGE_TASK_AGENT_TIMEOUT_SECONDS=180
+
+PAGE_CAPTURE_HOST=0.0.0.0
+PAGE_CAPTURE_PORT=8010
+PAGE_MOBILE_PUBLIC_URL=http://<your-lan-ip>:8010
+PAGE_MOBILE_TITLE=页面答题结果
+
+NTFY_ENABLED=1
+NTFY_SERVER=https://ntfy.sh
+NTFY_TOPIC=mystery-answer-2026
 ```
 
-## 输出风格
+## 安全
 
-当前 Agent 被约束为：
-
-- 不讲废话
-- 不写模板腔
-- 逻辑完整
-- 必要的定义、推导、边界、复杂度或计算步骤不能省
+- 不要提交 `.env.local`
+- 不要默认提交 `captured_pages/`
+- 不要默认提交 `agent_logs/`
+- 不要默认提交 `agent_runs/`

@@ -17,6 +17,7 @@ Add a mobile-friendly streaming answer experience without exposing secrets or no
    - streaming content below
    - clear running / done / failed state
 6. Keep `ntfy` as a notification and deep-link layer, not as the streaming container.
+7. Fix GitHub push auth for `mythfoxtang/KernalExtracter`.
 
 ## Suggested Architecture
 
@@ -150,6 +151,23 @@ The live stream itself should happen on our own mobile page after the tap.
    - task detected
    - answer generating
    - final formatting
+4. Which GitHub auth path do we want to use on this machine:
+   - add `C:\\Users\\Administrator\\.ssh\\id_ed25519.pub` to the GitHub account SSH keys
+   - or switch the repo remote to HTTPS with a PAT-backed login
+
+## GitHub Push Follow-Up
+
+- Current remote is already set:
+  - `git@github.com:mythfoxtang/KernalExtracter.git`
+- Current blocker:
+  - push failed with `Permission denied to deploy key`
+- Most likely fix:
+  - add the machine SSH public key to the GitHub account SSH keys
+- After auth is fixed, rerun:
+
+```bash
+git push -u origin master
+```
 
 ## First Files To Change Tomorrow
 

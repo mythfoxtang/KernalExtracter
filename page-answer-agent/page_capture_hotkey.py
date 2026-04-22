@@ -197,7 +197,7 @@ def post_payload(backend_endpoint: str, payload: dict) -> dict:
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=180) as response:
+        with urllib.request.urlopen(request, timeout=30) as response:
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="ignore")
@@ -238,19 +238,17 @@ class PageCaptureHotkeyApp:
                 payload = fetch_current_page_payload(self.cdp_endpoint)
                 payload["source"] = "playwright-hotkey"
                 result = post_payload(self.backend_endpoint, payload)
-                flash_console_status(f"Captured '{payload.get('title') or 'Untitled'}' -> {result.get('savedTo', 'saved')}")
-                agent = result.get("agent", {})
-                if agent.get("ok"):
-                    selected_task = agent.get("selectedTask", {})
-                    selected_task_id = selected_task.get("selected_task_id") or selected_task.get("task_id") or "n/a"
-                    flash_console_status(
-                        f"Agent answered in mode {agent.get('answerMode', 'reference')} using {agent.get('model', 'unknown-model')} for task {selected_task_id}"
-                    )
-                    flash_console_status(f"Answer preview: {build_answer_preview(agent.get('answer', ''))}")
-                    flash_console_status(f"Agent log: {agent.get('logFile', 'n/a')}")
-                elif agent:
-                    flash_console_status(f"Agent failed: {agent.get('error', 'unknown error')}")
-                    flash_console_status(f"Agent log: {agent.get('logFile', 'n/a')}")
+                session_id = result.get("sessionId", "n/a")
+                direct_url = result.get("directMobileUrl", result.get("mobileUrl", ""))
+                detail_url = result.get("detailMobileUrl", "")
+                flash_console_status(f"Captured '{payload.get('title') or 'Untitled'}' -> session {session_id}")
+                flash_console_status(f"Run status: {result.get('status', 'queued')}")
+                if direct_url:
+                    flash_console_status(f"Direct page: {direct_url}")
+                if detail_url:
+                    flash_console_status(f"Detail page: {detail_url}")
+                if result.get("message"):
+                    flash_console_status(result["message"])
             except Exception as exc:
                 flash_console_status(f"Capture failed: {exc}")
             finally:

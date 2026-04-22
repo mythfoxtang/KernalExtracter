@@ -15,6 +15,9 @@ echo Page Answer Agent started.
 echo Browser URL: %START_URL%
 echo Hotkey: Ctrl+Shift+Y
 echo Capture output: page-answer-agent\captured_pages\latest-page-capture.json
-echo Agent log: page-answer-agent\agent_logs\latest-agent-run.json
+echo Session state: page-answer-agent\agent_runs\sessions\latest.json
+echo Run files: page-answer-agent\agent_runs\*.json
+echo Agent logs: page-answer-agent\agent_logs\latest-direct.json and latest-detail.json
+echo Mobile latest direct page: http://127.0.0.1:8010/mobile/latest
 echo.
 echo After the Chrome debug window opens, navigate to a problem page and press Ctrl+Shift+Y.
