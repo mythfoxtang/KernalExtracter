@@ -1,9 +1,9 @@
 # Page Answer Agent
 
-当前版本已经改成双视图结构：
+当前版本已经整理成更清晰的产品结构：
 
 1. 抓取页面后立即创建一个 `session_id`
-2. 后台同时启动两个独立 run
+2. 后台并行启动两个独立 run
 3. `direct` 只生成最简中文答案
 4. `detail` 生成中文详细过程与答案，并保持流式输出
 5. 手机端可以在两个页面之间切换
@@ -38,9 +38,28 @@
 ```
 
 - `GET /api/sessions/<session_id>`
-  返回 session 信息以及 `direct` / `detail` 两个 run 的最新状态
+  返回 session 以及 `direct` / `detail` 两个 run 的最新状态
 - `GET /api/runs/<run_id>`
   返回单个 run 的状态
+
+## 模块结构
+
+- `page_capture_server.py`
+  HTTP 入口，只负责路由和响应
+- `page_service.py`
+  业务编排，负责创建 session、启动后台 run、组织通知
+- `agent.py`
+  模型调用、任务识别、主任务选择、答案生成
+- `run_store.py`
+  运行状态、session、抓取内容和 agent 日志的本地存储
+- `mobile_ui.py`
+  手机页 HTML 模板
+- `notifications.py`
+  `ntfy` 通知封装
+- `text_utils.py`
+  文本压缩、答案提取、Markdown 渲染等通用逻辑
+- `app_env.py`
+  环境变量加载和应用配置
 
 ## 输出策略
 
@@ -71,7 +90,21 @@ start-page-answer-agent.bat https://example.com/problem
 2. 按 `Ctrl+Shift+Y`
 3. 控制台会打印 `direct` 和 `detail` 两个手机页面地址
 
+## 依赖安装
+
+```powershell
+pip install -r ..\requirements.txt
+python -m playwright install chromium
+```
+
 ## 环境变量
+
+参考：
+
+- `.env.example`
+- `.env.local`
+
+核心变量：
 
 ```env
 DASHSCOPE_API_KEY=...

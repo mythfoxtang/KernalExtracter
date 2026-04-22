@@ -14,7 +14,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Run the standalone page answer agent against a captured page JSON file.")
     parser.add_argument("--capture", type=Path, default=DEFAULT_CAPTURE_PATH, help="Path to captured page JSON.")
-    parser.add_argument("--mode", choices=["hint", "framework", "reference"], default="reference")
+    parser.add_argument("--mode", choices=["direct", "detail", "hint", "framework", "reference"], default="detail")
     parser.add_argument("--note", default="", help="Optional user note.")
     args = parser.parse_args()
 

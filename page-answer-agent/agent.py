@@ -7,45 +7,15 @@ import urllib.request
 from collections.abc import Callable
 from pathlib import Path
 
+from app_env import load_local_env
+
 
 ROOT = Path(__file__).resolve().parent
 LOCAL_ENV_PATH = ROOT / ".env.local"
 DEFAULT_QWEN_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 DEFAULT_QWEN_VISION_MODEL = "qwen2.5-vl-3b-instruct"
 DEFAULT_QWEN_TEXT_MODEL = "qwen-plus"
-
-
-def get_http_timeout_seconds() -> int:
-    return int(os.getenv("PAGE_TASK_AGENT_TIMEOUT_SECONDS", "180"))
-
-
-def iter_env_paths() -> list[Path]:
-    candidates = [LOCAL_ENV_PATH]
-    relative_candidates = [
-        Path("quant-training-app") / ".env.local",
-        Path("page-answer-agent") / ".env.local",
-    ]
-    for base in (ROOT.parent, *ROOT.parents):
-        for relative_path in relative_candidates:
-            candidate = base / relative_path
-            if candidate not in candidates:
-                candidates.append(candidate)
-    return candidates
-
-
-def load_local_env() -> None:
-    for env_path in iter_env_paths():
-        if not env_path.exists():
-            continue
-        for raw_line in env_path.read_text(encoding="utf-8").splitlines():
-            line = raw_line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            key = key.strip()
-            value = value.strip().strip('"').strip("'")
-            if key and key not in os.environ:
-                os.environ[key] = value
+ANSWER_MODES = {"direct", "detail", "reference", "hint", "framework"}
 
 
 load_local_env()
@@ -54,6 +24,10 @@ load_local_env()
 def ensure_utf8_stdout() -> None:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+
+def get_http_timeout_seconds() -> int:
+    return int(os.getenv("PAGE_TASK_AGENT_TIMEOUT_SECONDS", "180"))
 
 
 def get_api_key() -> str:
@@ -112,6 +86,7 @@ def solve_page_tasks_with_progress(
     cleaned_url = (page_url or "").strip()
     cleaned_image = (image_data_url or "").strip()
     cleaned_note = (user_note or "").strip()
+    normalized_answer_mode = normalize_answer_mode(answer_mode)
 
     if not cleaned_page_text and not cleaned_image:
         raise RuntimeError("At least one of page_text or image_data_url is required.")
@@ -151,7 +126,7 @@ def solve_page_tasks_with_progress(
         task_detection=task_detection["data"],
         selected_task=selected_task["data"],
         user_note=cleaned_note,
-        answer_mode=answer_mode,
+        answer_mode=normalized_answer_mode,
         stream_callback=lambda chunk: emit_progress(
             progress_callback,
             stage="streaming",
@@ -160,10 +135,9 @@ def solve_page_tasks_with_progress(
         ),
     )
 
-    models = [task_detection["model"], selected_task["model"], solution["model"]]
     return {
-        "model": " -> ".join(models),
-        "answer_mode": answer_mode,
+        "model": " -> ".join([task_detection["model"], selected_task["model"], solution["model"]]),
+        "answer_mode": normalized_answer_mode,
         "selected_task": selected_task["data"],
         "content": solution["content"],
         "trace": {
@@ -173,10 +147,16 @@ def solve_page_tasks_with_progress(
     }
 
 
+def normalize_answer_mode(answer_mode: str) -> str:
+    normalized = (answer_mode or "").strip().lower() or "detail"
+    if normalized not in ANSWER_MODES:
+        return "detail"
+    return normalized
+
+
 def emit_progress(progress_callback: Callable[[dict], None] | None, **payload: dict) -> None:
-    if progress_callback is None:
-        return
-    progress_callback(payload)
+    if progress_callback is not None:
+        progress_callback(payload)
 
 
 def detect_tasks(
@@ -221,10 +201,7 @@ def select_primary_task(*, api_key: str, task_detection: dict, user_note: str) -
         model=get_text_model(),
         messages=[
             {"role": "system", "content": TASK_SELECTION_SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": build_selection_prompt(task_detection=task_detection, user_note=user_note),
-            },
+            {"role": "user", "content": build_selection_prompt(task_detection=task_detection, user_note=user_note)},
         ],
         temperature=0.1,
     )
@@ -322,6 +299,7 @@ def request_chat_completion(
     }
     if response_format:
         payload["response_format"] = response_format
+
     request = urllib.request.Request(
         f"{get_base_url()}/chat/completions",
         data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
@@ -331,7 +309,6 @@ def request_chat_completion(
         },
         method="POST",
     )
-
     try:
         with urllib.request.urlopen(request, timeout=get_http_timeout_seconds()) as response:
             raw = response.read().decode("utf-8")
@@ -389,7 +366,6 @@ def request_chat_completion_stream(
                     event = json.loads(data)
                 except json.JSONDecodeError:
                     continue
-
                 delta = extract_stream_delta_text(event)
                 if not delta:
                     continue
@@ -599,6 +575,11 @@ def build_solver_prompt(*, task_detection: dict, selected_task: dict, user_note:
             "你必须只输出中文。\n"
             "第一行必须以 `答案：` 开头。\n"
             "只给推进当前任务最关键的提示，不展开完整解法。"
+        ),
+        "framework": (
+            "你必须只输出中文 Markdown。\n"
+            "第一行必须以 `答案：` 开头，总结最终框架。\n"
+            "后面给紧凑的步骤顺序、关键判断和必要公式。"
         ),
     }
     mode_instruction = mode_rules.get(answer_mode, mode_rules["detail"])
