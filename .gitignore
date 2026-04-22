@@ -9,6 +9,7 @@ __pycache__/
 page-answer-agent/agent_logs/
 page-answer-agent/agent_runs/
 page-answer-agent/captured_pages/
+page-answer-agent/audio_captures/
 
 # IDE
 .idea/

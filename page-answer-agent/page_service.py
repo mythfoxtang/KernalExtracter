@@ -153,7 +153,7 @@ class PageAnswerService:
             "directMobileUrl": self.build_mobile_view_path(session_id, "direct"),
             "detailMobileUrl": self.build_mobile_view_path(session_id, "detail"),
             "apiUrl": f"/api/sessions/{session_id}",
-            "message": "Page captured. Direct answer and detailed answer are running in background.",
+            "message": "Input captured. Direct answer and detailed answer are running in background.",
         }
 
     def process_run_in_background(self, state: dict, record: dict, *, notify_result: bool) -> None:

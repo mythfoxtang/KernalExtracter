@@ -2,10 +2,10 @@
 
 当前版本已经整理成更清晰的产品结构：
 
-1. 抓取页面后立即创建一个 `session_id`
+1. 抓取页面或语音提问后立即创建一个 `session_id`
 2. 后台并行启动两个独立 run
 3. `direct` 只生成最简中文答案
-4. `detail` 生成中文详细过程与答案，并保持流式输出
+4. `detail` 生成中文过程与答案，并保持流式输出
 5. 手机端可以在两个页面之间切换
 
 ## 页面
@@ -50,16 +50,27 @@
   业务编排，负责创建 session、启动后台 run、组织通知
 - `agent.py`
   模型调用、任务识别、主任务选择、答案生成
+- `speech_agent.py`
+  语音转写和口语问题提取
 - `run_store.py`
   运行状态、session、抓取内容和 agent 日志的本地存储
 - `mobile_ui.py`
   手机页 HTML 模板
 - `notifications.py`
   `ntfy` 通知封装
-- `text_utils.py`
-  文本压缩、答案提取、Markdown 渲染等通用逻辑
-- `app_env.py`
-  环境变量加载和应用配置
+- `desktop_hotkey_utils.py`
+  桌面热键和本地 POST 工具
+- `page_capture_hotkey.py`
+  页面抓取热键
+- `speech_capture_hotkey.py`
+  语音录制热键，第一次按下开始录音，第二次按下停止录音并提问
+
+## 输入模式
+
+- 页面模式
+  在 Chrome 调试窗口里按 `Ctrl+Shift+Y`，抓取当前页面正文和选区
+- 语音模式
+  按 `Ctrl+Shift+U` 开始录音，再按一次停止录音；系统会先转写，再提取问题，然后走同样的答题流程
 
 ## 输出策略
 
@@ -71,6 +82,7 @@
 ## 运行输出
 
 - `captured_pages/latest-page-capture.json`
+- `audio_captures/latest-speech.wav`
 - `agent_runs/<run_id>.json`
 - `agent_runs/sessions/<session_id>.json`
 - `agent_runs/sessions/latest.json`
@@ -87,7 +99,7 @@ start-page-answer-agent.bat https://example.com/problem
 启动后：
 
 1. 在独立 Chrome 调试窗口打开题目页
-2. 按 `Ctrl+Shift+Y`
+2. 按 `Ctrl+Shift+Y` 抓页面，或按 `Ctrl+Shift+U` 录语音
 3. 控制台会打印 `direct` 和 `detail` 两个手机页面地址
 
 ## 依赖安装
@@ -111,6 +123,7 @@ DASHSCOPE_API_KEY=...
 QWEN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 QWEN_VISION_MODEL=qwen2.5-vl-3b-instruct
 QWEN_TEXT_MODEL=qwen-plus
+QWEN_ASR_MODEL=qwen3-asr-flash
 PAGE_TASK_AGENT_TIMEOUT_SECONDS=180
 
 PAGE_CAPTURE_HOST=0.0.0.0
@@ -118,14 +131,16 @@ PAGE_CAPTURE_PORT=8010
 PAGE_MOBILE_PUBLIC_URL=http://<your-lan-ip>:8010
 PAGE_MOBILE_TITLE=页面答题结果
 
-NTFY_ENABLED=1
-NTFY_SERVER=https://ntfy.sh
-NTFY_TOPIC=mystery-answer-2026
+PAGE_CAPTURE_HOTKEY=CTRL+SHIFT+Y
+PAGE_SPEECH_CAPTURE_HOTKEY=CTRL+SHIFT+U
+PAGE_AUDIO_SAMPLE_RATE=16000
+PAGE_AUDIO_CHANNELS=1
 ```
 
 ## 安全
 
 - 不要提交 `.env.local`
 - 不要默认提交 `captured_pages/`
+- 不要默认提交 `audio_captures/`
 - 不要默认提交 `agent_logs/`
 - 不要默认提交 `agent_runs/`
