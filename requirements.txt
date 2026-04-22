@@ -1,0 +1,7 @@
+# Python dependencies for this repository
+# Install with:
+#   pip install -r requirements.txt
+# Then install Playwright's browser runtime with:
+#   python -m playwright install chromium
+
+playwright>=1.40,<2.0
